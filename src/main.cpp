@@ -9,32 +9,53 @@
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
 #include <BlynkSimpleEsp32.h>
-
-
-
+#include <Wire.h>
+#include <Keypad.h>
+#include <LiquidCrystal_I2C.h>
 
 /* Comment this out to disable prints and save space */
 #define BLYNK_PRINT Serial
 
 // Sensor วัดความชิ้น + อุณหภูมิ
-#define	DHTPIN 4
-#define DHTTYPE DHT22
+#define	DHTPIN 4 // เปลี่ยน เลข PIN ด้วย!!!
+#define DHTTYPE DHT22 
 #define DHT_RESULT_PIN 22 // For test ปล่อยละอองน้ำ (LED)
 
 // Sensor วัดความชิ้น + อุณหภูมิ
-#define ULTRA_SONIC_TRIG 18
-#define ULTRA_SONIC_ECHO 23
+#define ULTRA_SONIC_TRIG 18 // เปลี่ยน เลข PIN ด้วย!!!
+#define ULTRA_SONIC_ECHO 23 // เปลี่ยน เลข PIN ด้วย!!!
 
 // Sensor วัดควัน
-#define SMOKE_DETECTOR 2
-#define SPEAKER 19
+#define SMOKE_DETECTOR 4 // เปลี่ยน เลข PIN ด้วย!!!
+#define SPEAKER 19 // ยังไม่เสร็จ
 
 const int SAFETY_LIMIT = 60;
 
+// For PhotoReceptor
+int ledPin = 5; // เปลี่ยน เลข PIN ด้วย!!!
+int ldrPin = 4;  // เปลี่ยน เลข PIN ด้วย!!!
 
 char ssid[] = "Dami 14";
 char password[] = "BigMi1414";
 
+// Keypad
+const byte ROWS = 4; //four rows
+const byte COLS = 4; //three columns
+char keys[ROWS][COLS] = {
+//  {'Q','W','#','*'},
+ {'1','2','3','U'},
+ {'4','5','6','D'},
+ {'7','8','9','S'},
+ {'L','0','R','N'}
+};
+
+byte rowPins[ROWS] = {32,33,25,26}; 
+byte colPins[COLS] = {13,12,14,27}; 
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+
+// Declaration for LCD 
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
 float humidity, temp, heatIndex;
@@ -57,10 +78,10 @@ BLYNK_WRITE(V0)
 BLYNK_WRITE(V4) // smoke
 {
   // Set incoming value from pin V0 to a variable
-  int value = param.asInt();
+  int smoke = param.asInt();
 
   // Update state
-  Blynk.virtualWrite(V1, value);
+//   Blynk.virtualWrite(V1, );
 }
 
 // This function is called every time the device is connected to the Blynk.Cloud
@@ -72,20 +93,19 @@ BLYNK_CONNECTED()
   Blynk.setProperty(V3, "url", "https://docs.blynk.io/en/getting-started/what-do-i-need-to-blynk/how-quickstart-device-was-made");
 }
 
-// This function sends Arduino's uptime every second to Virtual Pin 2.
-void myTimerEvent()
-{
-  // You can send any value at any time.
-  // Please don't send more that 10 values per second.
-  Blynk.virtualWrite(V2, millis() / 1000);
-}
-
-
 void setup() {
 	Serial.begin(9600);
-	Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
+	// Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
 	timer.setInterval(1000L, myTimerEvent);
 	dht_sensor.begin();
+
+	Wire.begin(22,23);
+	lcd.begin(16,2,1);
+
+	// // Turn on the blacklight and print a message.
+	lcd.backlight();
+	lcd.setCursor(0, 0); 
+	lcd.print("Hello");
 
 	pinMode(DHT_RESULT_PIN, OUTPUT);
 
@@ -95,38 +115,20 @@ void setup() {
 	pinMode(SMOKE_DETECTOR, INPUT);
 	pinMode(SPEAKER, OUTPUT);
 
+	/* Photoreceptor */
+	pinMode(ledPin, OUTPUT);
+	pinMode(ldrPin, INPUT);
 }
 
-void loop() {
-	Blynk.run();
-	startSmokeDetector();
-	// DHT 22 วัดความชื้น  (OK)
-	// humidity = dht_sensor.readHumidity();
-	// temp = dht_sensor.readTemperature(false); // Temp in Celcius
-	// heatIndex = dht_sensor.computeHeatIndex(temp, humidity, false);
-
-	// Serial.println("Temperature: " + String(temp) + " Celcius");
-	// Serial.println("Humidity: " + String(humidity) + " %");
-
-	// Serial.println("Heat Index: " + String(heatIndex) + " Celcius");
-
-	// if (heatIndex > 28) {
-	// 	digitalWrite(DHT_RESULT_PIN, 1);
-
-		
-	// }
-	// else {
-	// 	digitalWrite(DHT_RESULT_PIN, 0);
-	// }
-
-	// delay(2000);
-
-	
-	
+// This function sends Arduino's uptime every second to Virtual Pin 2.
+void myTimerEvent()
+{
+  // You can send any value at any time.
+  // Please don't send more that 10 values per second.
+  Blynk.virtualWrite(V2, millis() / 1000);
 }
 
 void startDHT() {
-
 	// DHT 22 วัดควา?มชื้น  (OK)
 	humidity = dht_sensor.readHumidity();
 	temp = dht_sensor.readTemperature(false); // Temp in Celcius
@@ -139,8 +141,6 @@ void startDHT() {
 
 	if (heatIndex > 28) {
 		digitalWrite(DHT_RESULT_PIN, 1);
-
-		
 	}
 	else {
 		digitalWrite(DHT_RESULT_PIN, 0);
@@ -174,14 +174,91 @@ void startSmokeDetector() {
 	int smoke = analogRead(SMOKE_DETECTOR);
 	Serial.println("Smoke Density: " + String(smoke));
 
-	if (smoke > SAFETY_LIMIT) {
-		// tone(SPEAKER, 500, 1000);
+	// if (smoke > 2200) {
+	// 	tone(SPEAKER, 500, 1000);
+	// 	Serial.println("SMOKE DETECTED!!!!!");
+	// }
+	// else {
+	// 	noTone(SPEAKER);
+	// 	Serial.println("SMOKE NOT FOUND");
+	// }
+	if (smoke > 2200) {
+		digitalWrite(SPEAKER, HIGH);
 		Serial.println("SMOKE DETECTED!!!!!");
 	}
 	else {
-		// noTone(SPEAKER);
+		digitalWrite(SPEAKER, LOW);
 		Serial.println("SMOKE NOT FOUND");
 	}
 
 	delay(1000);
 }
+/* For krypad */
+void scanning() {
+  byte error, address;
+  int nDevices;
+  Serial.println("Scanning...");
+  nDevices = 0;
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    if (error == 0) {
+      Serial.print("I2C device found at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+      nDevices++;
+    }
+    else if (error==4) {
+      Serial.print("Unknow error at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+    }    
+  }
+  if (nDevices == 0) {
+    Serial.println("No I2C devices found\n");
+  }
+  else {
+    Serial.println("done\n");
+  }
+}
+char buf[256];
+
+void startKeyPad() { // กดรหัส ประตูบ้าน
+
+}
+
+
+void startPhotoReceptor() { // ไฟ auto 
+	float  val = 0;
+	int val = analogRead(ldrPin);  
+  	Serial.print("val = "); 
+	Serial.println(val); 
+	float MAX = 4095; 
+	float MIN = 2500; 
+	float c = MAX - val;
+	float p = MAX - MIN;
+	float Value = (1 - (c / p)) * 255 ;
+	Serial.println(Value);
+
+	if (val < MIN ) { 
+		analogWrite(ledPin, 0); 
+	} 
+	else if (val > MAX){
+		analogWrite(ledPin, 255);
+	}
+	else {
+		analogWrite(ledPin, Value);
+	}
+	delay(100);
+}
+
+void loop() {
+	//Blynk.run();
+	startSmokeDetector();
+	startPhotoReceptor();
+}
+
