@@ -54,7 +54,7 @@ byte colPins[COLS] = {13,12,14,27};
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
-// Declaration for LCD 
+// Declaration for LCD  (เผื่อจะต่อ จอ LCD แต่ตอนนี้ไม้่ได้ใช้)
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 
@@ -101,12 +101,12 @@ void setup() {
 
 	/* ---- KeyPad  & LCD Display ---- */
 	Wire.begin();
-	lcd.begin(16,2,1);
+	// lcd.begin(16,2,1);
 
 	// // Turn on the blacklight and print a message.
-	lcd.backlight();
-	lcd.setCursor(0, 0); 
-	lcd.print("Hello");
+	// lcd.backlight();
+	// lcd.setCursor(0, 0); 
+	// lcd.print("Hello");
 	/*  ------------------------------ */
 
 	pinMode(DHT_RESULT_PIN, OUTPUT);
@@ -169,14 +169,6 @@ void startSmokeDetector() {
 	int smoke = analogRead(SMOKE_DETECTOR);
 	Serial.println("Smoke Density: " + String(smoke));
 
-	// if (smoke > 2200) {
-	// 	tone(SPEAKER, 500, 1000);
-	// 	Serial.println("SMOKE DETECTED!!!!!");
-	// }
-	// else {
-	// 	noTone(SPEAKER);
-	// 	Serial.println("SMOKE NOT FOUND");
-	// }
 	if (smoke > 2200) {
 		digitalWrite(SPEAKER, HIGH);
 		Serial.println("SMOKE DETECTED!!!!!");
@@ -188,46 +180,46 @@ void startSmokeDetector() {
 
 	delay(1000);
 }
-/* For krypad */
-void scanning() {
-  byte error, address;
-  int nDevices;
-  Serial.println("Scanning...");
-  nDevices = 0;
-  for(address = 1; address < 127; address++ ) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-    if (error == 0) {
-      Serial.print("I2C device found at address 0x");
-      if (address<16) {
-        Serial.print("0");
-      }
-      Serial.println(address,HEX);
-      nDevices++;
-    }
-    else if (error==4) {
-      Serial.print("Unknow error at address 0x");
-      if (address<16) {
-        Serial.print("0");
-      }
-      Serial.println(address,HEX);
-    }    
-  }
-  if (nDevices == 0) {
-    Serial.println("No I2C devices found\n");
-  }
-  else {
-    Serial.println("done\n");
-  }
-}
+/* For Keypad */
 char buf[256];
 
 String input = "";
 boolean isEnter;
 void startKeyPad(String password) { // กดรหัส ประตูบ้าน
-	
+	char key = keypad.getKey(); 
+	if (key != NO_KEY){ 
+		if (isEnter || key == 'S') {
+			lcd.clear();
+			input = "";
+			isEnter = 0;
+		}
+		Serial.println(key);
+		// lcd.setCursor(0, 1); 
+		// lcd.print(key);
+		
 
-
+		if (key != 'N' && key != 'S' && key != 'L' && key != 'R' && key != 'U' && key != 'D') {
+			input += key;
+		//   lcd.print(input);
+			Serial.println(input);
+		}
+		else if (key == 'N') {
+		// lcd.print(input);
+			if (input == password ) {
+				// lcd.setCursor(0, 0);
+				Serial.println("Door Opened");
+				isEnter = 1;
+		} 
+		else {
+			// lcd.setCursor(0, 0);
+			Serial.println("Incorrect Password");
+			isEnter = 1;
+		}
+		input = "";
+	   
+	}
+		delay(1);     
+	}
 }
 
 float val = 100;
@@ -259,7 +251,7 @@ void startPhotoReceptor() { // ไฟ auto
 void loop() {
 	//Blynk.run();
 	// startSmokeDetector();
-	startPhotoReceptor();
-	startKeyPad("12345");
+	// startPhotoReceptor();
+	startKeyPad("12345"); // Door's Password = 12345
 }
 
