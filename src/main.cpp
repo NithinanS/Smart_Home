@@ -96,16 +96,18 @@ BLYNK_CONNECTED()
 void setup() {
 	Serial.begin(9600);
 	// Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
-	timer.setInterval(1000L, myTimerEvent);
+	// timer.setInterval(1000L, myTimerEvent);
 	dht_sensor.begin();
 
-	Wire.begin(22,23);
+	/* ---- KeyPad  & LCD Display ---- */
+	Wire.begin();
 	lcd.begin(16,2,1);
 
 	// // Turn on the blacklight and print a message.
 	lcd.backlight();
 	lcd.setCursor(0, 0); 
 	lcd.print("Hello");
+	/*  ------------------------------ */
 
 	pinMode(DHT_RESULT_PIN, OUTPUT);
 
@@ -120,13 +122,6 @@ void setup() {
 	pinMode(ldrPin, INPUT);
 }
 
-// This function sends Arduino's uptime every second to Virtual Pin 2.
-void myTimerEvent()
-{
-  // You can send any value at any time.
-  // Please don't send more that 10 values per second.
-  Blynk.virtualWrite(V2, millis() / 1000);
-}
 
 void startDHT() {
 	// DHT 22 วัดควา?มชื้น  (OK)
@@ -227,38 +222,44 @@ void scanning() {
 }
 char buf[256];
 
-void startKeyPad() { // กดรหัส ประตูบ้าน
+String input = "";
+boolean isEnter;
+void startKeyPad(String password) { // กดรหัส ประตูบ้าน
+	
+
 
 }
 
-
+float val = 100;
 void startPhotoReceptor() { // ไฟ auto 
-	float  val = 0;
-	int val = analogRead(ldrPin);  
+	val = analogRead(ldrPin);  
   	Serial.print("val = "); 
 	Serial.println(val); 
-	float MAX = 4095; 
-	float MIN = 2500; 
+	float MAX = 2000; 
+	float MIN = 260; 
 	float c = MAX - val;
 	float p = MAX - MIN;
-	float Value = (1 - (c / p)) * 255 ;
+	float Value = (1 - (c / p)) * 255 ; // อย่าลืมลบออก เอาแค่ติด/ ไม่ติด
 	Serial.println(Value);
 
 	if (val < MIN ) { 
-		analogWrite(ledPin, 0); 
+		// analogWrite(ledPin, 0); 
+		digitalWrite(ledPin, HIGH);
 	} 
 	else if (val > MAX){
-		analogWrite(ledPin, 255);
+		// analogWrite(ledPin, 255);
+		digitalWrite(ledPin, LOW);
 	}
 	else {
 		analogWrite(ledPin, Value);
 	}
-	delay(100);
+	delay(1000);
 }
 
 void loop() {
 	//Blynk.run();
-	startSmokeDetector();
+	// startSmokeDetector();
 	startPhotoReceptor();
+	startKeyPad("12345");
 }
 
