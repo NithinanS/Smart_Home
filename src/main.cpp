@@ -12,28 +12,36 @@
 #include <Wire.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
+#include <ArtronShop_LineNotify.h>	
+
+/* RT TX  */
+#define TxPin 1
+#define RxPin 3
 
 /* Comment this out to disable prints and save space */
 #define BLYNK_PRINT Serial
 
 // Sensor วัดความชิ้น + อุณหภูมิ
-#define	DHTPIN 4 // เปลี่ยน เลข PIN ด้วย!!!
+#define	DHTPIN 4 
 #define DHTTYPE DHT22 
 #define DHT_RESULT_PIN 22 // For test ปล่อยละอองน้ำ (LED)
 
 // Sensor วัดความชิ้น + อุณหภูมิ
-#define ULTRA_SONIC_TRIG 18 // เปลี่ยน เลข PIN ด้วย!!!
-#define ULTRA_SONIC_ECHO 23 // เปลี่ยน เลข PIN ด้วย!!!
+#define ULTRA_SONIC_TRIG 18 
+#define ULTRA_SONIC_ECHO 23 
 
 // Sensor วัดควัน
-#define SMOKE_DETECTOR 4 // เปลี่ยน เลข PIN ด้วย!!!
-#define SPEAKER 19 // ยังไม่เสร็จ
+#define SMOKE_DETECTOR 36 // เปลี่ยน เลข PIN ด้วย!!!
+// #define SPEAKER 19 // ยังไม่เสร็จ
+
+/* Line Notify Token*/
+#define LINE_TOKEN "DJTlQcoA6UTw7mkog4TQc43GWsnweROoGCh8VhtoFMF" // Do not DELETE
 
 const int SAFETY_LIMIT = 60;
 
 // For PhotoReceptor
-int ledPin = 5; // เปลี่ยน เลข PIN ด้วย!!!
-int ldrPin = 4;  // เปลี่ยน เลข PIN ด้วย!!!
+#define LEDPIN 5
+#define LDRPIN 4  // เปลี่ยน เลข PIN ด้วย!!!
 
 char ssid[] = "Dami 14";
 char password[] = "BigMi1414";
@@ -95,6 +103,7 @@ BLYNK_CONNECTED()
 
 void setup() {
 	Serial.begin(9600);
+	
 	// Blynk.begin(BLYNK_AUTH_TOKEN, ssid, password);
 	// timer.setInterval(1000L, myTimerEvent);
 	dht_sensor.begin();
@@ -109,17 +118,46 @@ void setup() {
 	// lcd.print("Hello");
 	/*  ------------------------------ */
 
+	/* Connecting to WIFI */
+	Serial.print("Connecting to ");
+    Serial.println(ssid);
+
+    WiFi.begin(ssid, password); // เริ่มต้นเชื่อมต่อ WiFi
+
+    while (WiFi.status() != WL_CONNECTED) { // วนลูปหากยังเชื่อมต่อ WiFi ไม่สำเร็จ
+        delay(500);
+        Serial.print(".");
+    }
+    
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+	/*---------------------------*/
+
+	/* Line Notify Connection */
+	LINE.begin(LINE_TOKEN);
+
+	if (LINE.send("Test Nofication")) { 
+    	Serial.println("Send notify successful"); // ส่งข้อความ "Send notify successful" ไปที่ Serial Monitor
+  	} 
+	else { // ถ้าส่งไม่สำเร็จ
+    	Serial.printf("Send notify fail. check your token (code: %d)\n", LINE.status_code); // ส่งข้อความ "Send notify fail" ไปที่ Serial Monitor
+  	}
+	/*---------------------------*/
+
+
 	pinMode(DHT_RESULT_PIN, OUTPUT);
 
 	pinMode(ULTRA_SONIC_TRIG, OUTPUT);
     pinMode(ULTRA_SONIC_ECHO, INPUT);
 
 	pinMode(SMOKE_DETECTOR, INPUT);
-	pinMode(SPEAKER, OUTPUT);
+	// pinMode(SPEAKER, OUTPUT);
 
 	/* Photoreceptor */
-	pinMode(ledPin, OUTPUT);
-	pinMode(ldrPin, INPUT);
+	pinMode(LEDPIN, OUTPUT);
+	pinMode(LDRPIN, INPUT);
 }
 
 
@@ -144,6 +182,8 @@ void startDHT() {
 	delay(2000);
 }
 
+bool haveNotified = false;
+
 void startUltraSonic() {
 	// Ultra Sonic Sensor ชาง (OK)
 	digitalWrite(ULTRA_SONIC_TRIG, HIGH);
@@ -154,27 +194,37 @@ void startUltraSonic() {
 	float duration_us = pulseIn(ULTRA_SONIC_ECHO, HIGH);
 	float distance_cm = 0.017 * duration_us;
 
-	Serial.println(duration_us);
+	Serial.println(distance_cm);
 
 	if(distance_cm <= 70) {
+		if (!haveNotified) {
+			LINE.send("Visitor Detected");
+			haveNotified = true;
+		}
 		Serial.println("life detected");
 	}
-	else Serial.println("zzz...");
-	
+	else {
+		Serial.println("zzz...");
+		haveNotified = false;
+	}
 	delay(1000);
 }
 
+int lastDetectedTime = 0;
 void startSmokeDetector() {
 	/* Smoke Detector */
 	int smoke = analogRead(SMOKE_DETECTOR);
 	Serial.println("Smoke Density: " + String(smoke));
 
 	if (smoke > 2200) {
-		digitalWrite(SPEAKER, HIGH);
-		Serial.println("SMOKE DETECTED!!!!!");
+		// digitalWrite(SPEAKER, HIGH);
+		if (millis() - lastDetectedTime > 30 * 1000) {
+			LINE.send("Smoke Detetected");
+			Serial.println("SMOKE DETECTED!!!!!");
+		}
 	}
 	else {
-		digitalWrite(SPEAKER, LOW);
+		// digitalWrite(SPEAKER, LOW);
 		Serial.println("SMOKE NOT FOUND");
 	}
 
@@ -224,7 +274,7 @@ void startKeyPad(String password) { // กดรหัส ประตูบ้�
 
 float val = 100;
 void startPhotoReceptor() { // ไฟ auto 
-	val = analogRead(ldrPin);  
+	val = analogRead(LDRPIN);  
   	Serial.print("val = "); 
 	Serial.println(val); 
 	float MAX = 2000; 
@@ -236,22 +286,23 @@ void startPhotoReceptor() { // ไฟ auto
 
 	if (val < MIN ) { 
 		// analogWrite(ledPin, 0); 
-		digitalWrite(ledPin, HIGH);
+		digitalWrite(LEDPIN, HIGH);
 	} 
 	else if (val > MAX){
-		// analogWrite(ledPin, 255);
-		digitalWrite(ledPin, LOW);
+		// analogWrite(LEDPIN, 255);
+		digitalWrite(LEDPIN, LOW);
 	}
 	else {
-		analogWrite(ledPin, Value);
+		analogWrite(LEDPIN, Value);
 	}
 	delay(1000);
 }
 
 void loop() {
 	//Blynk.run();
-	// startSmokeDetector();
+	startSmokeDetector();
 	// startPhotoReceptor();
+	startUltraSonic();
 	startKeyPad("12345"); // Door's Password = 12345
 }
 
