@@ -102,13 +102,11 @@ void setup() {
 
   ledcSetup(ledPhoto, freq, resolution);
   ledcAttachPin(nightLight, ledPhoto);
-
-  //Blynk.virtualWrite(V0, 98.55);
 }
 
 void loop() {
   Blynk.run();
-  //timer.run();
+  timer.run();
 
   //check serial input
   if (anotherSerial.available() > 0) {
@@ -123,7 +121,6 @@ void loop() {
 }
 
 void processCommand(String command) { //command format : "d=1" or "t=26"
-  //Serial.println(command);
   char sensorId = command[0];
   float value = (command.substring(command.indexOf('=')+1, command.length())).toFloat();
   Serial.print(sensorId);
@@ -177,8 +174,6 @@ void checkHeat() {
 }
 
 void openSpray(bool open) {
-  Serial.print("openSpray ");
-  Serial.println(open);
   digitalWrite(sprayLight, open);
 }
 
