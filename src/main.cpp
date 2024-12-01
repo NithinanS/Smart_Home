@@ -206,8 +206,11 @@ void startDHT() {
 	if (heatIndex > 28) {
 		Serial.println("Water Dispensed");
 	}
+	anotherSerial.println("t=" + String(temp)); // Send to gateway board
+	delay(100);
+	anotherSerial.println("h=" + String(humidity)); // Send to gateway board
+	delay(100);
 	anotherSerial.println("q=" + String(heatIndex)); // Send to gateway board
-
 }
 
 bool haveNotified = false;
