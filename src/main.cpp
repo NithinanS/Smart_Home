@@ -1,14 +1,8 @@
-// For Blynk 
-#define BLYNK_TEMPLATE_ID           "TMPL61lOG-kSF"
-#define BLYNK_TEMPLATE_NAME         "Quickstart Template"
-#define BLYNK_AUTH_TOKEN            "foSfONd_gnxdxbSVeqfF1mIl_n5rxAGR"
-
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
-#include <BlynkSimpleEsp32.h>
 #include <Wire.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
@@ -20,9 +14,6 @@
 /* RT TX  */
 #define TxPin 22
 #define RxPin 23
-
-/* Comment this out to disable prints and save space */
-#define BLYNK_PRINT Serial
 
 // Sensor วัดความชิ้น + อุณหภูมิ
 #define	DHTPIN 4 
@@ -42,7 +33,6 @@
 
 Servo myServo;
 
-
 const int SAFETY_LIMIT = 60;
 
 // For PhotoReceptor
@@ -51,8 +41,8 @@ const int SAFETY_LIMIT = 60;
 SoftwareSerial anotherSerial(RxPin, TxPin);
 
 
-char ssid[] = "Wish";
-char password[] = "daniel123";
+char ssid[] = "Dami 14";
+char password[] = "BigMi1414";
 
 // Keypad
 const byte ROWS = 4; //four rows
@@ -111,7 +101,7 @@ void setup() {
 	dht_sensor.begin();
 
 	/* ---- KeyPad  & LCD Display ---- */
-	Wire.begin();
+	// Wire.begin();
 	/*  ------------------------------ */
 
 	/* Connecting to WIFI */
@@ -134,17 +124,12 @@ void setup() {
 	/* Line Notify Connection */
 	/*---------------------------*/
 
-
-	// pinMode(DHT_RESULT_PIN, OUTPUT);
-
 	pinMode(ULTRA_SONIC_TRIG, OUTPUT);
     pinMode(ULTRA_SONIC_ECHO, INPUT);
 
 	pinMode(SMOKE_DETECTOR, INPUT);
-	// pinMode(SPEAKER, OUTPUT);
 
 	/* Photoreceptor */
-	// pinMode(LEDPIN, OUTPUT);
 	pinMode(LDRPIN, INPUT);
 
 	pinMode(MOTION_SENSOR, INPUT);
@@ -219,13 +204,10 @@ void startDHT() {
 	Serial.println("Heat Index: " + String(heatIndex) + " Celcius");
 
 	if (heatIndex > 28) {
-		// digitalWrite(DHT_RESULT_PIN, 1);
 		Serial.println("Water Dispensed");
-		// anotherSerial.println("q=1"); // Send to gateway board
 	}
 	anotherSerial.println("q=" + String(heatIndex)); // Send to gateway board
 
-	// delay(2000);
 }
 
 bool haveNotified = false;
@@ -240,7 +222,7 @@ void startUltraSonic() {
 	float duration_us = pulseIn(ULTRA_SONIC_ECHO, HIGH);
 	float distance_cm = 0.017 * duration_us;
 
-	Serial.println("Distance:" +  String(distance_cm));
+	Serial.println("Distance:" +  String(distance_cm) + " cm");
 
 	if(distance_cm <= 70) {
 		if (!haveNotified) {
@@ -257,7 +239,6 @@ void startUltraSonic() {
 		anotherSerial.println("d=0"); // Send to gateway board
 
 	}
-	// delay(1000);
 }
 
 int lastDetectedTime = 0;
@@ -271,7 +252,6 @@ void startSmokeDetector() {
 	Serial.println("Smoke Density: " + String(smoke));
 
 	if (smoke > 2200) {
-		// digitalWrite(SPEAKER, HIGH);
 		if (millis() - lastDetectedTime > 30 * 1000) {
 			Serial.println("SMOKE DETECTED!!!!!");
 			anotherSerial.println("s=1"); // Send to gateway board
@@ -279,13 +259,11 @@ void startSmokeDetector() {
 		lastDetectedTime = millis();
 	}
 	else {
-		// digitalWrite(SPEAKER, LOW);
 		Serial.println("SMOKE NOT FOUND");
 		anotherSerial.println("s=0"); // Send to gateway board
 
 	}
 
-	// delay(1000);
 }
 /* For Keypad */
 char buf[256];
@@ -293,61 +271,50 @@ char buf[256];
 
 String input = "";
 boolean isEnter;
-void startKeyPad(String password) { // กดรหัส ประตูบ้าน
-	char key = keypad.getKey(); 
-	if (key != NO_KEY){ 
-		if (isEnter || key == 'S') {
-			input = "";
-			isEnter = 0;
-		}
-		Serial.println(key);
+void startKeyPad(String password) { // กดรหัส ประตูบ้าน 
+    char key = keypad.getKey(); 
+    if (key != NO_KEY){ 
+        if (isEnter || key == 'S') {
+            input = "";
+            isEnter = 0;
+        }
+        Serial.println(key);
 
-		if (key != 'N' && key != 'S' && key != 'L' && key != 'R' && key != 'U' && key != 'D') {
-			input += key;
-			Serial.println(input);
-		}
-		else if (key == 'N') {
-		// lcd.print(input);
-			if (input == password ) {
-				Serial.println("Door Opened");
-				myServo.write(90);
-				isEnter = 1;
-				
-		} 
-		else {
-			Serial.println("Incorrect Password");
-			isEnter = 1;
-		}
-		input = "";
-	   
-	}
-		delay(1);     
-	}
+        if (key != 'N' && key != 'S' && key != 'L' && key != 'R' && key != 'U' && key != 'D') {
+            input += key;
+            Serial.println(input);
+        }
+        else if (key == 'N') {
+        // lcd.print(input);
+            if (input == password ) { //ต้องใช้pin vin
+                Serial.println("Door Opened");
+                myServo.write(180);//180คืิิอเปิดประตู
+                isEnter = 1;
+        } 
+        else {
+            Serial.println("Incorrect Password");
+            myServo.write(90);//90คือปิดประตู
+            isEnter = 1;
+        }
+        input = "";
+
+    }
+        delay(1);
+    }
 }
 
 float val = 100;
 void startPhotoReceptor() { // ไฟ auto 
 	val = analogRead(LDRPIN);  
-  	Serial.println("Brightness = " + String(val)); 
-	float MAX = 2000; 
-	float MIN = 260; 
-	float c = MAX - val;
-	float p = MAX - MIN;
-	// float Value = (1 - (c / p)) * 255 ; // อย่าลืมลบออก เ
-	
+  	Serial.println("Brightness = " + String(val)); 	
 
-	if (val < MIN || MIN < val < MAX) { 
-		// analogWrite(ledPin, 0); 
-		// digitalWrite(LEDPIN, HIGH);
+	if (val < 200) { 
 		anotherSerial.println("l=1"); // Send to gateway board
 
 	} 
-	else if (val > MAX){
-		// analogWrite(LEDPIN, 255);
-		// digitalWrite(LEDPIN, LOW);
+	else {
 		anotherSerial.println("l=0"); // Send to gateway board
 	}
-	// delay(1000);
 }
 
 boolean startSensorMotion(){
@@ -361,21 +328,55 @@ boolean startSensorMotion(){
 
 int servoPin = 19;  // Pin ที่เชื่อมต่อกับ Servo
 void startServo() {
-
-
 	Serial.println("Door automatically opened.");
 	myServo.write(90);  // เปิดประตู
 }
 
+unsigned long lastSmokeTime = 0;
+unsigned long lastDHTTime = 0;
+unsigned long lastPhotoReceptorTime = 0;
+unsigned long lastUltraSonicTime = 0;
+unsigned long lastKeyPadTime = 0;
+unsigned long lastMotionSensorTime = 0;
+unsigned long lastSaveDataTime = 0;
+
 void loop() {
-	// startSmokeDetector();
-	// startDHT();
-	// startPhotoReceptor();
-	// startUltraSonic();
-	// startKeyPad("12345"); // Door's Password = 12345
-	myServo.write(90);
-	// startSensorMotion();
-	// saveDataToSheet();
-	// delay(2000);
+    unsigned long currentTime = millis();
+
+    // Smoke Detector 
+    if (currentTime - lastSmokeTime >= 5000) {
+        lastSmokeTime = currentTime;
+        startSmokeDetector();
+    }
+
+    // DHT Sensor 
+    if (currentTime - lastDHTTime >= 5000) {
+        lastDHTTime = currentTime;
+        startDHT();
+    }
+
+    // PhotoReceptor 
+    if (currentTime - lastPhotoReceptorTime >= 5000) {
+        lastPhotoReceptorTime = currentTime;
+        startPhotoReceptor();
+    }
+
+    // Ultrasonic Sensor 
+    if (currentTime - lastUltraSonicTime >= 5000) {
+        lastUltraSonicTime = currentTime;
+        startUltraSonic();
+    }
+
+    startKeyPad("12345"); // Door's Password = 12345
+
+    // Motion Sensor
+    if (currentTime - lastMotionSensorTime >= 5000) {
+        lastMotionSensorTime = currentTime;
+        startSensorMotion();
+    }
+
+    // Save data to Google Sheet 
+    saveDataToSheet();
+    
 }
 
